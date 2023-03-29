@@ -6,10 +6,11 @@ import math
 import time
 import psutil
 import logging
-from multiprocessing.pool import ThreadPool
+import concurrent.futures
 
-from . import xmlutils, cache
+from . import xmlutils
 from .metrics import Metrics
+from .dbase import connect
 
 log = logging.getLogger(__name__)
 
@@ -30,17 +31,14 @@ _metrics_config = {
 }
 
 #-- pipeline / batching method 
-def create_trade_range(start_trade, batch_size, end_trade, conn, metrics: Metrics):
+def create_trade_range(start_trade, batch_size, end_trade, dbase, metrics: Metrics):
     start_ts = time.perf_counter()
     stop_trade = min(end_trade, start_trade + batch_size)
     log.info("Generating batch: %d-%d", start_trade, stop_trade-1)
-    pipe = conn.pipeline()
-    for keyname, trade in xmlutils.GenerateTradeEY(start_trade, stop_trade - start_trade):
-        pipe.set(keyname, trade)
-        # log.info(f'{trade_num}: {trade}')
-    log.info("Executing batch: %d-%d", start_trade, stop_trade-1)
+    df = xmlutils.GenerateTradeDF(start_trade, stop_trade - start_trade)
+    log.info("Storing batch: %d-%d", start_trade, stop_trade-1)
     start_io_ts = time.perf_counter()
-    pipe.execute() 
+    dbase.set_trades(df)
     end_ts = time.perf_counter()
 
     # update metrics
@@ -56,14 +54,14 @@ def execute(args):
     pcores = psutil.cpu_count(logical=False)
     log.info(f"System Info: Physical Cores: {pcores} Logical Cores: {vcores}")
 
-    #-- open connection to conn
+    #-- open connection to dbase (redis or filesystem)
     log.info("Setting up cache connection ...")
-    conn = cache.connect(args, as_input=False)
+    dbase = connect(args, mode='w')
     log.info("... done.")
 
     # when writing to file, we don't suport writing out of order yet and hence we don't
     # use multiple threads.  When writing to redis, we can use multiple threads safely.
-    threads = 1 if args.cache_type=='filesystem' else vcores
+    threads = vcores
 
     if args.cache_type=='filesystem' and args.start_trade != 0:
         log.critical("Cannot start at a trade other than 0 when writing to file")
@@ -72,7 +70,6 @@ def execute(args):
     batch_size = min(10000, max(1, math.ceil(args.trade_window/threads)))
     stop_trade = start_trade + args.trade_window
 
-    thread_pool = ThreadPool(threads)
     log.info(f'Starting the thread pool and filling the cache (%d threads)', threads)
     log.info(f'Generating %d trades in range %d to %d', args.trade_window, start_trade, stop_trade-1)
     log.info(f'Batch-size for pipeline to cache: %d', batch_size)
@@ -86,7 +83,8 @@ def execute(args):
                 **args.tags)
 
     start = time.perf_counter()
-    thread_pool.map(lambda x: create_trade_range(x, batch_size, stop_trade, conn, metrics), range(start_trade, stop_trade, batch_size))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+        executor.map(lambda x: create_trade_range(x, batch_size, stop_trade, dbase, metrics), range(start_trade, stop_trade, batch_size))
     end=time.perf_counter()
 
     timedelta=end-start

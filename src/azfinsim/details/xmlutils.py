@@ -3,12 +3,13 @@ import numpy as np
 import datetime as dt
 import xml.etree.ElementTree as ET
 
-def GenerateTradeEY(tradenum, N):
+def GenerateTradeDF(tradenum, N) -> pd.DataFrame:
     # just use the time now
     today = dt.date.today()
     stoday = "%s" % (today)
 
     newFile = {}
+    newFile['tradenum'] = range(tradenum,tradenum+N)
     newFile['fx1'] = np.random.rand(N)*0.12+0.8285
 
     newFile['start_date'] = [dt.date(2017,12,29)]*N
@@ -33,9 +34,10 @@ def GenerateTradeEY(tradenum, N):
     newFile['notionalPerWarr'] = np.random.rand(N)*100 + 950
     #newFile['strike'] = np.random.rand(N)*0.2 + 0.9
     newFile['strike'] = np.random.rand(N)*0.12 + 0.7
- 
-    newFile = pd.DataFrame.from_dict(newFile)
+    return pd.DataFrame.from_dict(newFile)
 
+def GenerateTradeEY(tradenum, N):
+    newFile = GenerateTradeDF(tradenum, N)
     for i, row in newFile.iterrows():
         #print(row['fx1'],row['start_date'],row['drift'],row['maturity'],row['t_steps'],row['trials'])
         #print(row['ro'],row['v'],row['sigma1'],row['warrantsNo'],row['notionalPerWarr'],row['strike'])
