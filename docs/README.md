@@ -79,23 +79,36 @@ python3 -m azfinsim.generator                             \
         --trade-window <total number of trades to generate>
 ```
 
-When using redis cache, the generator will populate the cache using multiple threads concurrently. For filesystem,
-currently we only support sequential data generation.
+The generator will populate the cache using multiple threads concurrently.
 
 ### Processing trades
 
 This step emulates the data processing stage in a financial data processing workflow.
 
 ```sh
-# process trades
-python3 -m azfinsim.azfinsim --cache-name <redis url>       \
-        --cache-key <redis key>                             \
-        --start-trade <start trade number>                  \
+# process trades from/to a redis cache
+python3 -m azfinsim.azfinsim                             \
+        --cache-type   "redis"                           \
+        --cache-name   <redis url>                       \
+        --cache-key    <redis key>                       \
+        --start-trade  <start trade number>              \
+        --trade-window <total number of trades to process>
+
+# process trades from/to disk
+python3 -m azfinsim.azfinsim                             \
+        --cache-type   "filesystem"                      \
+        --cache-path   <filename>                        \
+        --start-trade  <start trade number>              \
         --trade-window <total number of trades to process>
 ```
 
-Optionally, arguments can be read in from a json config file which can be specified
-using the `--config` command line option.
+This will process the trades and produce results of the risk analysis. If using redis cache, the results
+will be stored in the same cache. If using filesystem, the results will be stored in a file at the same location
+as the input file, but with a `.results` added before the extension. For example, if the input file
+is `trades.csv`, the results will be stored in `trades.results.csv`.
+
+<!-- Optionally, arguments can be read in from a json config file which can be specified
+using the `--config` command line option. -->
 
 ## Docker
 

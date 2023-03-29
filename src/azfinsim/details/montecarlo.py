@@ -1,14 +1,6 @@
 import pandas as pd
 import numpy as np
-#import matplotlib.pyplot as plt
-#from scipy.interpolate import interp2d, interp1d
-from datetime import date
 import time
-import logging
-from applicationinsights import TelemetryClient
-from applicationinsights.logging import LoggingHandler
-
-from . import xmlutils
 
 #-- Montecarlo
 

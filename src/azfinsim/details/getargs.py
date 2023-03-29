@@ -5,6 +5,7 @@ from an optionally specified config file.
 """
 import argparse
 import json
+import os
 
 class ArgumentsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string):
@@ -30,12 +31,16 @@ class ParseTagsAction(argparse.Action):
         setattr(namespace, self.dest, tags)
 
 def getargs(progname):
-
     parser = argparse.ArgumentParser(progname)
+
+    num_threads = os.cpu_count()
 
     #-- cli parsing
     parser.add_argument('--config', type=open, action=ArgumentsAction, help='read extra arguments from the config file (json)')
-    parser.add_argument('--verbose', default=False, type=lambda x: (str(x).lower() == 'true'), help="verbose output: true or false")
+    parser.add_argument('--verbose', default=False, type=lambda x: (str(x).lower() == 'true'), help="verbose output: true or false (default: false)")
+
+    if progname == 'generator':
+        parser.add_argument('--threads', default=num_threads, type=int, help=f"number of threads to use (default: {num_threads})")
 
     #-- Cache parameters
     cacheParser = parser.add_argument_group('Cache', 'Cache-specific options')
@@ -55,11 +60,11 @@ def getargs(progname):
     #-- algorithm/work per thread
     workParser = parser.add_argument_group('Trades', 'Trade-specific options')
     workParser.add_argument("-s", "--start-trade", default=0, type=int, help="trade range to process: starting trade number (default: 0)")
-    workParser.add_argument("-w", "--trade-window", default=0, type=int, help="number of trades to process (default: 0)")
+    workParser.add_argument("-w", "--trade-window", required=True, type=int, help="number of trades to process (required)")
 
     if progname == 'azfinsim':
         algoParser = parser.add_argument_group('Algorithm', 'Algorithm-specific options')
-        algoParser.add_argument('--harvester', default=False, type=lambda x: (str(x).lower() == 'true'), help="use harvester scheduler: true or false")
+        # algoParser.add_argument('--harvester', default=False, type=lambda x: (str(x).lower() == 'true'), help="use harvester scheduler: true or false")
         algoParser.add_argument("-a", "--algorithm", default="deltavega", choices=['deltavega','pvonly','synthetic'],help="pricing algorithm (default: deltavega)")
 
         #-- synthetic workload options
@@ -78,5 +83,5 @@ def getargs(progname):
     args = parser.parse_args()
 
     from . import process_args
-    process_args(args)
+    process_args(progname, args)
     return args

@@ -1,7 +1,9 @@
+import colorlog
 import logging
 import os
-import colorlog
 import sys
+
+from . import metrics
 
 # helper setup azure log handler
 def _az_log_handler(connection_string: str):
@@ -15,7 +17,7 @@ def _az_log_handler(connection_string: str):
     from opencensus.stats import stats as stats_module
     stats_module.stats.view_manager.register_exporter(metrics_exporter.new_metrics_exporter(connection_string=connection_string))
 
-def _initalize_logging():
+def _initialize_logging():
     # setup logging for this package
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -38,7 +40,7 @@ def _initalize_logging():
 
     sys.excepthook = _log_unhandled_exception
 
-def process_args(args):
+def process_args(progname, args):
     """call this function to process command line arguments to update package logging settings"""
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
@@ -48,6 +50,14 @@ def process_args(args):
         logger.info('adding AzureLogHandler from args')
         _az_log_handler(args.app_insights)
 
+    # setup default tags for metrics
+    tags = {
+        'app': progname,
+        'package': 'azfinsim',
+    }
+    if args.tags is not None:
+        tags.update(args.tags)
+    metrics.initialize_tags(tags)
 
 # initialize logging
-_initalize_logging()
+_initialize_logging()
