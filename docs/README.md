@@ -149,6 +149,89 @@ python3 -m azfinsim.concat                               \
 <!-- Optionally, arguments can be read in from a json config file which can be specified
 using the `--config` command line option. -->
 
+## Example Workflows
+
+To better understand how the tools can be used, here are some example workflows.
+
+### Generate trades and process them to/from a single file
+
+```sh
+#!/bin/bash
+
+# create directory to store trades / results
+mkdir -p /tmp/demo1/
+
+# generate trades
+python3 -m azfinsim.generator                            \
+        --cache-path   "/tmp/demo1/trades.csv"           \
+        --start-trade  0                                 \
+        --trade-window 10000
+
+# process trades
+python3 -m azfinsim.azfinsim                             \
+        --cache-path   "/tmp/demo1/trades.csv"
+
+# view results
+head /tmp/demo1/trades.results.csv
+```
+
+### Generate trades and process them to/from a redis cache
+
+```sh
+#!/bin/bash
+
+# generate trades
+python3 -m azfinsim.generator                            \
+        --cache-name   "redis://localhost:6379"          \
+        --cache-key    "<secret>"                        \
+        --start-trade  0                                 \
+        --trade-window 10000
+
+# process trades
+python3 -m azfinsim.azfinsim                            \
+        --cache-name   "redis://localhost:6379"         \
+        --cache-key    "<secret>"                       \
+        --start-trade  0                                \
+        --trade-window 10000
+
+# results are stored back in the same cache
+```
+
+### Generate trades and process them to/from multiple files
+
+```sh
+#!/bin/bash
+
+# create directory to store trades / results
+mkdir -p /tmp/demo2/
+
+# generate 100,000 trades
+python3 -m azfinsim.generator                            \
+        --cache-path   "/tmp/demo2/trades.csv"           \
+        --trade-window 100000
+
+# split trades into multiple files each with 10,000 trades
+python3 -m azfinsim.split                                \
+        --cache-path   "/tmp/demo2/trades.csv"           \
+        --trade-window 10000
+
+# process trades from each file
+for i in {0..9}; do
+    # process all trades in each file
+    # results are stored back in file `.../trades.${i}.results.csv`
+    python3 -m azfinsim.azfinsim                         \
+            --cache-path   "/tmp/demo2/trades.${i}.csv"
+done
+
+# merge results back into a single file
+python3 -m azfinsim.concat                                      \
+        --cache-path   "/tmp/demo2/trades.[0-9]*.results.csv"   \
+        --output-path  "/tmp/demo2/trades.results.csv"
+
+# view results
+head /tmp/demo2/trades.results.csv
+```
+
 ## Docker
 
 Instead of installing the application locally, you can build and use a
