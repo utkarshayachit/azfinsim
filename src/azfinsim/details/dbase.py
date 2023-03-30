@@ -120,11 +120,21 @@ class TradesCacheFile(TradesCache):
         assert isinstance(column, str)
         self._read()
         return self._trades[self._trades[column] == tradenum]
+    
+    def get_trades(self) -> pd.DataFrame:
+        assert self._mode == 'r'
+        self._read()
+        return self._trades
 
     def get_trade_count(self) -> int:
         assert self._mode == 'r'
         self._read()
         return len(self._trades)
+    
+    def get_first_trade(self) -> pd.DataFrame:
+        assert self._mode == 'r'
+        self._read()
+        return self._trades.iloc[0]
 
     def set_trades(self, trades: pd.DataFrame, column:str='tradenum') -> None:
         assert self._mode == 'w'

@@ -37,15 +37,45 @@ _metrics_config = {
 
 log = logging.getLogger(__name__)
 
+def check_args(args):
+    if args.cache_type is None and args.cache_path is not None and args.cache_name is None:
+        # adjust default cache type
+        log.info('{:16}: --cache-type=filesystem'.format('AUTO_ARG'))
+        args.cache_type = 'filesystem'
+
+    if args.cache_type is None and args.cache_path is None and args.cache_name is not None:
+        # adjust default cache type
+        log.info('{:16}: --cache-type=redis'.format('AUTO_ARG'))
+        args.cache_type = 'redis'
+
+    if args.cache_type == 'redis':
+        if args.cache_name is None:
+            raise ValueError('cache_name must be specified for redis cache')
+        if args.cache_key is None:
+            raise ValueError('cache_key must be specified for redis cache')
+        if args.start_trade is None:
+            log.info('{:16}: --start-trade=0'.format('AUTO_ARG'))
+            args.start_trade = 0
+        if args.trade_window is None:
+            raise ValueError('trade_window must be specified for redis cache')
+
+    if args.cache_type == 'filesystem':
+        if args.cache_path is None:
+            raise ValueError('cache_path must be specified for filesystem cache')
+        if args.output_path is None:
+            args.output_path = os.path.dirname(args.cache_path)
+            log.info('{:16}: --output-path={}'.format('AUTO_ARG', args.output_path))
+        
+ 
 def execute(args):
-    # start time
-    start_ts = time.perf_counter()
+    # validate and sanitize args
+    check_args(args)
+
+    log.info('{0:16}: azfinsim starting'.format('BEGIN'))
 
     # setup metrics
     metrics.define_measurements_and_views(_metrics_config)
     metrics.put("failed", 0)
-
-    start_trade=args.start_trade
 
     #-- open connection to dbase
     log.info("CACHE %10s: CONNECT %s", '', args.cache_path if args.cache_type == "filesystem" else args.cache_name)
@@ -55,7 +85,7 @@ def execute(args):
         # if cache_type is filesystem then we need a separate connection for output
         dirname, basename = os.path.split(args.cache_path)
         name, ext = os.path.splitext(basename)
-        args.cache_path = os.path.join(dirname, f'{name}.results{ext}')
+        args.cache_path = os.path.join(args.output_path, f'{name}.results{ext}')
         log.info('CACHE %10s: RESULTS %s', '', args.cache_path)
         results_dbase = connect(args, mode='w')
     else:
@@ -63,8 +93,18 @@ def execute(args):
         results_dbase = dbase
     log.info('CACHE %10s: CONNECTED', '')
 
-    # use dbase trade count if trade_window is 0 (only valid for filesystem cache)
-    trade_window = args.trade_window if args.trade_window != 0 else dbase.get_trade_count()
+    if args.start_trade is None:
+        assert args.cache_type == "filesystem"
+        args.start_trade = int(dbase.get_first_trade()['tradenum'])
+        log.info('{:16}: --start-trade={}'.format('AUTO_ARG', args.start_trade))
+
+    if args.trade_window is None:
+        assert args.cache_type == "filesystem"
+        args.trade_window = dbase.get_trade_count()
+        log.info('{:16}: --trade-window={}'.format('AUTO_ARG', args.trade_window))
+
+    start_trade=args.start_trade
+    trade_window = args.trade_window
     stop_trade = start_trade + trade_window
 
     if (stop_trade - start_trade) <= 0:
@@ -76,6 +116,8 @@ def execute(args):
 
     log.info("TRADE %10s: START=%d, COUNT=%d", '', start_trade, trade_window)
 
+    # start time
+    start_ts = time.perf_counter()
     for tradenum in range(start_trade, stop_trade):
         log.info("TRADE %10d: BEGIN" % args.start_trade)
 

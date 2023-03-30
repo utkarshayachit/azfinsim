@@ -5,7 +5,6 @@ from an optionally specified config file.
 """
 import argparse
 import json
-import os
 
 class ArgumentsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string):
@@ -31,45 +30,51 @@ class ParseTagsAction(argparse.Action):
         setattr(namespace, self.dest, tags)
 
 def getargs(progname):
-    parser = argparse.ArgumentParser(progname)
+    if not progname in ['azfinsim', 'generator', 'split', 'concat']:
+        raise ValueError(f'Invalid program name: {progname}')
 
-    num_threads = os.cpu_count()
+    parser = argparse.ArgumentParser(progname)
 
     #-- cli parsing
     parser.add_argument('--config', type=open, action=ArgumentsAction, help='read extra arguments from the config file (json)')
     parser.add_argument('--verbose', default=False, type=lambda x: (str(x).lower() == 'true'), help="verbose output: true or false (default: false)")
 
-    if progname == 'generator':
-        parser.add_argument('--threads', default=num_threads, type=int, help=f"number of threads to use (default: {num_threads})")
-
     #-- Cache parameters
-    cacheParser = parser.add_argument_group('Cache', 'Cache-specific options')
-    cacheParser.add_argument("--cache-type", default="redis",
-                             choices=['redis','filesystem'],
-                             help="cache type (default: redis)"),
-    
-    redisParser = parser.add_argument_group('Redis Cache', 'Redis Cache-specific options (when --cache-type=redis)')
-    redisParser.add_argument("--cache-name", help="redis hostname/ip address")
-    redisParser.add_argument("--cache-port", default=6380, type=int, help="redis port number (default=6380 [SSL])")
-    redisParser.add_argument("--cache-key", help="cache access key")
-    redisParser.add_argument("--cache-ssl", default="yes", choices=['yes','no'], help="use SSL for redis cache access (default: yes)")
+    if progname in ['azfinsim', 'generator']:
+        cacheParser = parser.add_argument_group('Cache', 'Cache-specific options')
+        cacheParser.add_argument("--cache-type", 
+                                 choices=['redis','filesystem'],
+                                 help="cache type (default: auto-detected)")
+
+        redisParser = parser.add_argument_group('Redis Cache', 'Redis Cache-specific options (when --cache-type=redis)')
+        redisParser.add_argument("--cache-name", help="redis hostname/ip address")
+        redisParser.add_argument("--cache-port", default=6380, type=int, help="redis port number (default=6380 [SSL])")
+        redisParser.add_argument("--cache-key", help="cache access key")
+        redisParser.add_argument("--cache-ssl", default="yes", choices=['yes','no'], help="use SSL for redis cache access (default: yes)")
 
     fsParser = parser.add_argument_group('Filesystem Cache', 'Filesystem Cache-specific options (when --cache-type=filesystem)')
     fsParser.add_argument("--cache-path", help="filesystem path for cache")
+    if progname in ['azfinsim', 'split', 'concat']:
+        fsParser.add_argument("--output-path", default=None,
+            help="filesystem directory for results. If not specified, results are written to the same directory as the input file.")
 
     #-- algorithm/work per thread
-    workParser = parser.add_argument_group('Trades', 'Trade-specific options')
-    workParser.add_argument("-s", "--start-trade", default=0, type=int, help="trade range to process: starting trade number (default: 0)")
-    workParser.add_argument("-w", "--trade-window", required=True, type=int, help="number of trades to process (required)")
+    if progname in ['azfinsim', 'generator', 'split']:
+        workParser = parser.add_argument_group('Trades', 'Trade-specific options')
+        if progname in ['azfinsim', 'generator']:
+            workParser.add_argument("-s", "--start-trade", type=int, help="trade range to process: starting trade number")
+            workParser.add_argument("-w", "--trade-window", type=int, help="number of trades to process")
+        if progname == 'split':
+            workParser.add_argument("-w", "--trade-window", type=int, help="number of trades per file")
 
     if progname == 'azfinsim':
         algoParser = parser.add_argument_group('Algorithm', 'Algorithm-specific options')
-        # algoParser.add_argument('--harvester', default=False, type=lambda x: (str(x).lower() == 'true'), help="use harvester scheduler: true or false")
-        algoParser.add_argument("-a", "--algorithm", default="deltavega", choices=['deltavega','pvonly','synthetic'],help="pricing algorithm (default: deltavega)")
+        algoParser.add_argument("--algorithm", default="deltavega", choices=['deltavega','pvonly','synthetic'],
+            help="pricing algorithm (default: deltavega)")
 
         #-- synthetic workload options
-        algoParser.add_argument("-d", "--delay-start", type=int, default=0, help="delay startup time in seconds (default: 0)")
-        algoParser.add_argument("-m", "--mem-usage", type=int, default=16, help="memory usage for task in MB (default: 16)")
+        algoParser.add_argument("--delay-start", type=int, default=0, help="delay startup time in seconds (default: 0)")
+        algoParser.add_argument("--mem-usage", type=int, default=16, help="memory usage for task in MB (default: 16)")
         algoParser.add_argument("--task-duration", type=int, default=20, help="task duration in milliseconds (default: 20)")
         algoParser.add_argument("--failure", type=float, default=0.0, help="inject random task failure with this probability (default: 0.0)")
 
@@ -77,7 +82,7 @@ def getargs(progname):
     insightsParser = parser.add_argument_group('Azure Application Insights', 'Azure Application Insights-specific options')
     insightsParser.add_argument("-i", "--app-insights",
         help="Azure Application Insights Connection String", type=str, default=None)
-    insightsParser.add_argument("--tags", help="tags to add to metrics; a comma-separated key=value pairs are expected",
+    insightsParser.add_argument("-t", "--tags", help="tags to add to metrics; a comma-separated key=value pairs are expected",
                                 action=ParseTagsAction, default={})
 
     args = parser.parse_args()
