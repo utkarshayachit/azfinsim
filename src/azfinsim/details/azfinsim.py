@@ -60,8 +60,6 @@ def check_args(args):
     if args.cache_type == "redis":
         if args.cache_name is None:
             raise ValueError("cache_name must be specified for redis cache")
-        if args.cache_key is None:
-            raise ValueError("cache_key must be specified for redis cache")
         if args.start_trade is None:
             log.info("{:16}: --start-trade=0".format("AUTO_ARG"))
             args.start_trade = 0

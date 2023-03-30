@@ -53,8 +53,6 @@ def check_args(args):
     if args.cache_type == "redis":
         if args.cache_name is None:
             raise ValueError("cache_name must be specified for redis cache")
-        if args.cache_key is None:
-            raise ValueError("cache_key must be specified for redis cache")
     if args.cache_type == "filesystem":
         if args.cache_path is None:
             raise ValueError("cache_path must be specified for filesystem cache")

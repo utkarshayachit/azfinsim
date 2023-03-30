@@ -1,5 +1,7 @@
 # AzFinSim: Fintech Risk Simulation
 
+[![Python application](https://github.com/utkarshayachit/azfinsim/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/utkarshayachit/azfinsim/actions/workflows/python-app.yml)
+
 **AzFinSim** is a simple Python application for synthetic risk simulation. This is forked
 from https://github.com/mkiernan/azfinsim to remove all Azure infrastructure code and
 simply be structured as standard Python application for risk analysis.
