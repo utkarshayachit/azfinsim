@@ -1,5 +1,6 @@
 import logging
 import os.path
+import time
 
 from . import metrics
 from .dbase import connect
@@ -19,12 +20,12 @@ _metrics_config = {
 def check_args(args):
     args.cache_type = 'filesystem'
     if args.cache_path is None:
-        raise ValueError('cache_path must be specified for filesystem cache')
+        raise ValueError('cache_path must be specified')
     if args.output_path is None:
         args.output_path = os.path.dirname(args.cache_path)
         log.info('{:10}: --output-path={}'.format('AUTO_ARG', args.output_path))
     if args.trade_window is None or args.trade_window < 1:
-        raise ValueError('trade_window must be specified for filesystem cache')
+        raise ValueError('trade_window must be specified')
 
 def execute(args):
     # validate and sanitize args
@@ -48,6 +49,7 @@ def execute(args):
 
     trades = dbase.get_trades()
 
+    start_ts = time.perf_counter()
     #-- split trades into batches
     for index, offset in enumerate(range(0, len(trades), args.trade_window)):
         args.cache_path = os.path.join(dir, '{}.{}{}'.format(name, index, ext))
@@ -57,3 +59,10 @@ def execute(args):
         df = trades.iloc[offset:offset + args.trade_window]
         log.info('{:10}: trades {}-{} (count={})'.format('SAVE', df.iloc[0]['tradenum'], df.iloc[-1]['tradenum'], len(df)))
         output.set_trades(df)
+    end_ts = time.perf_counter()
+    delta_ts = end_ts - start_ts
+    metrics.put('execution_time', delta_ts)
+
+    # record metrics
+    metrics.record()
+    log.info('{:10}: split complete'.format('END'))

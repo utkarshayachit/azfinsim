@@ -54,9 +54,12 @@ def getargs(progname):
 
     fsParser = parser.add_argument_group('Filesystem Cache', 'Filesystem Cache-specific options (when --cache-type=filesystem)')
     fsParser.add_argument("--cache-path", help="filesystem path for cache")
-    if progname in ['azfinsim', 'split', 'concat']:
+    if progname in ['azfinsim', 'split']:
         fsParser.add_argument("--output-path", default=None,
             help="filesystem directory for results. If not specified, results are written to the same directory as the input file.")
+    if progname == 'concat':
+        fsParser.add_argument("--output-path", default=None,
+            help="merged file name.", required=True)
 
     #-- algorithm/work per thread
     if progname in ['azfinsim', 'generator', 'split']:
