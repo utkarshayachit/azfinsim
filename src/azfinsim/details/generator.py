@@ -2,7 +2,6 @@
 #
 # generator.py: Load the AzFinsim Cache with randomly generated trade data of specified length
 #
-import concurrent.futures
 import logging
 import time
 
@@ -91,7 +90,6 @@ def execute(args):
     batch_size = min(10000, args.trade_window)
     stop_trade = start_trade + args.trade_window
 
-    threads = 1  # disable concurrency for now
     log.info(
         "{:10}: batch_size={}, start_trade={}, stop_trade={}".format(
             "CONFIG", batch_size, start_trade, stop_trade
@@ -99,11 +97,8 @@ def execute(args):
     )
 
     start = time.perf_counter()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-        executor.map(
-            lambda x: create_trade_range(x, batch_size, stop_trade, dbase),
-            range(start_trade, stop_trade, batch_size),
-        )
+    for x in range(start_trade, stop_trade, batch_size):
+        create_trade_range(x, batch_size, stop_trade, dbase)
     end = time.perf_counter()
     timedelta = end - start
 
