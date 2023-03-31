@@ -14,7 +14,7 @@ python3 -m azfinsim.generator \
     -w $num_trades
 
 echo "verify trades have been added"
-keys=$(redis-cli --raw -h $REDIS_HOST -p $REDIS_PORT keys "[0-9]*.bin" | wc -l)
+keys=$(redis-cli --raw -h $REDIS_HOST -p $REDIS_PORT keys "trade:[0-9]*" | wc -l)
 if [ $keys -ne $num_trades ]; then
     echo "Expected $num_trades keys, found $keys"
     exit 1
@@ -27,7 +27,7 @@ python3 -m azfinsim.azfinsim \
     -w 10
 
 echo "verify results were added"
-keys=$(redis-cli --raw -h $REDIS_HOST -p $REDIS_PORT keys "[0-9]*.results.bin" | wc -l)
+keys=$(redis-cli --raw -h $REDIS_HOST -p $REDIS_PORT keys "deltavega:[0-9]*" | wc -l)
 if [ $keys -ne 10 ]; then
     echo "Expected 10 results keys, found $keys"
     exit 1
@@ -37,13 +37,13 @@ echo "process trades using pvonly"
 python3 -m azfinsim.azfinsim \
     --cache-name $REDIS_HOST --cache-port $REDIS_PORT --cache-ssl no \
     -s $((start_trade+99+5)) \
-    -w 10 \
+    -w 6 \
     --algorithm pvonly
 
 echo "verify results were added"
-keys=$(redis-cli --raw -h $REDIS_HOST -p $REDIS_PORT keys "[0-9]*.results.bin" | wc -l)
-if [ $keys -ne 15 ]; then
-    echo "Expected 15 results keys, found $keys"
+keys=$(redis-cli --raw -h $REDIS_HOST -p $REDIS_PORT keys "pvonly:[0-9]*" | wc -l)
+if [ $keys -ne 6 ]; then
+    echo "Expected 6 results keys, found $keys"
     exit 1
 fi
 

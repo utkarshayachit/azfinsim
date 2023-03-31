@@ -58,7 +58,7 @@ class TradesCache:
 class TradesCacheRedis(TradesCache):
     """Redis implementation of TradesCache"""
 
-    def __init__(self, redis_client: redis.Redis, mode: str, read_key='{}.bin', write_key='{}.bin', **kwargs):
+    def __init__(self, redis_client: redis.Redis, mode: str, read_key='trade:{}', write_key='trade:{}', **kwargs):
         super().__init__(mode)
         self._redis_client = redis_client
         self._read_key = read_key

@@ -102,7 +102,7 @@ def execute(args):
     else:
         # to avoid overwriting the input cache, we use a different key pattern
         # for the output by passing the `write_key`` argument
-        dbase = connect(args, mode="rw", write_key='{}.results.bin')
+        dbase = connect(args, mode="rw", write_key='%s:{}' % args.algorithm)
         results_dbase = dbase
     log.info("CACHE %10s: CONNECTED", "")
 

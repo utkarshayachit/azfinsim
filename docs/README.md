@@ -129,7 +129,12 @@ python3 -m azfinsim.split                                \
         --trade-window <total number of trades to process>
 ```
 
-This will split the input file into multiple files in the output directory. The number of files will be equal to the number of trades in the input file divided by the `trade-window` parameter. For example, if the input file has 1000 trades and the `trade-window` is 100, then the output directory will have 10 files. The output files will be named `trades.0.csv`, `trades.1.csv`, ..., `trades.9.csv` and placed in the output directory specified by the `output-path` parameter.  If the `output-path` parameter is not specified, the output files will be placed in the same directory as the input file.
+This will split the input file into multiple files in the output directory. The number of files will be equal to the
+number of trades in the input file divided by the `trade-window` parameter. For example, if the input file has 1000
+trades and the `trade-window` is 100, then the output directory will have 10 files. The output files will be named
+`trades.0.csv`, `trades.1.csv`, ..., `trades.9.csv` and placed in the output directory specified by the `output-path`
+parameter.  If the `output-path` parameter is not specified, the output files will be placed in the same directory
+as the input file.
 
 To merge the split files back into a single file, use the following command:
 
@@ -140,7 +145,9 @@ python3 -m azfinsim.concat                               \
         --output-path  <output filename>
 ```
 
-For example, if the input files are named `trades.0.csv`, `trades.1.csv`, ..., `trades.9.csv` and are placed in the directory `/tmp/trades`, then the following command can be used to merge them back into a single file:
+For `concat`, the `cache-path` parameter is a glob pattern that matches the input files.
+For example, if the input files are named `trades.0.csv`, `trades.1.csv`, ..., `trades.9.csv` and are placed in
+the directory `/tmp/trades`, then the following command can be used to merge them back into a single file:
 
 ```sh
 python3 -m azfinsim.concat                               \
@@ -182,22 +189,31 @@ head /tmp/demo1/trades.results.csv
 ```sh
 #!/bin/bash
 
+# create redis cache, if not already running
+docker run -d --name redis -p 6379:6379 redis
+
 # generate trades
 python3 -m azfinsim.generator                            \
-        --cache-name   "redis://localhost:6379"          \
-        --cache-key    "<secret>"                        \
+        --cache-name   "localhost"                       \
+        --cache-port   6379                              \
         --start-trade  0                                 \
         --trade-window 10000
 
-# process trades
+# process trades (using pv algorithm)
 python3 -m azfinsim.azfinsim                            \
-        --cache-name   "redis://localhost:6379"         \
-        --cache-key    "<secret>"                       \
+        --cache-name   "localhost"                      \
+        --cache-port   6379                             \
         --start-trade  0                                \
-        --trade-window 10000
+        --trade-window 10000                            \
+        --algorithm    pvonly
 
 # results are stored back in the same cache
 ```
+
+The generator stores each trade generated in the redis cache with a key of the form `trade:<trade number>`. The results
+are stored in the same cache with a key of the form `<algorithm>:<trade number>`, where `<algorithm>` is the name of the
+algorithm used to process the trade. For example, if the `pvonly` algorithm is used, the results will be stored in the
+cache with a key of the form `pvonly:<trade number>`.
 
 ### Generate trades and process them to/from multiple files
 
@@ -241,7 +257,7 @@ container instead. For that, you'll need Docker installed on your workstation.
 
 ```sh
 # clone repository
-git clone https://github.com/utkarshayachit/azfinsim.git -b refactor
+git clone https://github.com/utkarshayachit/azfinsim.git
 
 cd azfinsim
 # to build the container image
