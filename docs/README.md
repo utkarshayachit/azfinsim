@@ -250,6 +250,34 @@ python3 -m azfinsim.concat                                      \
 head /tmp/demo2/trades.results.csv
 ```
 
+## Azure Application Insights
+
+The application can be configured to send telemetry data to Azure Application Insights. To enable this, you'll need to
+create an Azure Application Insights resource in Azure. Once created, you'll need to get the connection string for the
+resource. This can be done by going to the resource in the Azure portal copy the "Connection String" from the "Overview"
+page. The connection string will look something like this:
+
+```ruby
+# Connection String
+InstrumentationKey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/
+```
+
+All tools under azfinim can be configured to send telemetry data to Azure Application Insights. To enable this, you'll need
+pass this connection string to the `--app-insights` command line option. For example, to enable telemetry for the
+`azfinsim.generator` tool, you can use the following command:
+
+```sh
+python3 -m azfinsim.generator                            \
+        --cache-path   "/tmp/demo2/trades.csv"           \
+        --app-insights  "InstrumentationKey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/"
+```
+
+Once enabled, the application will send telemetry data to Azure Application Insights resource. These include logs, exceptions,
+and metrics. There is a short delay before the data is available in the Azure portal, so you may need to wait a few minutes
+before you can see the data. Logs are stored as `traces` and exceptions are stored as `exceptions`. Metrics are
+stored as `customMetrics`. You can inspect each of these in the Azure portal by going to the resource and clicking on
+the "Logs" viewer.
+
 ## Docker
 
 Instead of installing the application locally, you can build and use a
