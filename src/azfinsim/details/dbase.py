@@ -6,7 +6,7 @@ import redis
 import threading
 import logging
 import time
-
+import io
 from . import metrics
 
 log = logging.getLogger(__name__)
@@ -61,6 +61,7 @@ class TradesCacheRedis(TradesCache):
     def __init__(self, redis_client: redis.Redis, mode: str):
         super().__init__(mode)
         self._redis_client = redis_client
+        self._redis_client.ping()
 
     def get_trade(self, tradenum: int, column: str = "tradenum") -> pd.DataFrame:
         """returns a dataframe with the trade"""
@@ -68,13 +69,15 @@ class TradesCacheRedis(TradesCache):
         assert isinstance(tradenum, int)
         assert isinstance(column, str)
         start = time.perf_counter()
-        data = self._redis_client.get(f"ey{tradenum}.json")
+        data = self._redis_client.get(f"ey{tradenum}.bin")
         end = time.perf_counter()
         delta_ts = end - start
         metrics.put("io_read_time", delta_ts)
         if data is None:
             raise RuntimeError(f"No trade found for {tradenum}")
-        return pd.read_json(data, orient="records")
+        # log.info('{}, data: {}'.format(tradenum, data))
+        buffer = io.BytesIO(data)
+        return pd.read_pickle(buffer).to_frame().T
 
     def get_trade_count(self) -> int:
         log.warning("get_trade_count not implemented for redis")
@@ -90,8 +93,11 @@ class TradesCacheRedis(TradesCache):
         pipeline = self._redis_client.pipeline()
         for _, row in trades.iterrows():
             tradenum = row[column]
-            pipeline.set(f"ey{tradenum}.json", row.to_json(orient="records"))
-        pipeline.execute()
+            # log.info('{}, row: {}'.format(tradenum, row.to_json()))
+            buffer = io.BytesIO()
+            row.to_pickle(buffer)
+            pipeline.set(f"ey{tradenum}.bin", buffer.getvalue())
+        pipeline.execute(raise_on_error=True)
         end = time.perf_counter()
         delta_ts = end - start
         metrics.put("io_write_time", delta_ts)
