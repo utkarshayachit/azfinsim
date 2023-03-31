@@ -58,9 +58,13 @@ class TradesCache:
 class TradesCacheRedis(TradesCache):
     """Redis implementation of TradesCache"""
 
-    def __init__(self, redis_client: redis.Redis, mode: str):
+    def __init__(self, redis_client: redis.Redis, mode: str, read_key='{}.bin', write_key='{}.bin', **kwargs):
         super().__init__(mode)
         self._redis_client = redis_client
+        self._read_key = read_key
+        self._write_key = write_key
+
+        # validate connection to redis server
         self._redis_client.ping()
 
     def get_trade(self, tradenum: int, column: str = "tradenum") -> pd.DataFrame:
@@ -69,7 +73,7 @@ class TradesCacheRedis(TradesCache):
         assert isinstance(tradenum, int)
         assert isinstance(column, str)
         start = time.perf_counter()
-        data = self._redis_client.get(f"ey{tradenum}.bin")
+        data = self._redis_client.get(self._read_key.format(tradenum))
         end = time.perf_counter()
         delta_ts = end - start
         metrics.put("io_read_time", delta_ts)
@@ -96,7 +100,7 @@ class TradesCacheRedis(TradesCache):
             # log.info('{}, row: {}'.format(tradenum, row.to_json()))
             buffer = io.BytesIO()
             row.to_pickle(buffer)
-            pipeline.set(f"ey{tradenum}.bin", buffer.getvalue())
+            pipeline.set(self._write_key.format(tradenum), buffer.getvalue())
         pipeline.execute(raise_on_error=True)
         end = time.perf_counter()
         delta_ts = end - start
@@ -106,7 +110,7 @@ class TradesCacheRedis(TradesCache):
 class TradesCacheFile(TradesCache):
     """Filesystem implementation of TradesCache"""
 
-    def __init__(self, fname: str, mode: str):
+    def __init__(self, fname: str, mode: str, **kwargs):
         super().__init__(mode)
         assert mode in ["r", "w"]  # we don't support "rw" for files yet
         self._fname = fname
@@ -167,7 +171,7 @@ class TradesCacheFile(TradesCache):
             self._add_header = False
 
 
-def connect(args, mode: str) -> TradesCache:
+def connect(args, mode: str, **kwargs) -> TradesCache:
     """connect to the cache"""
     if args.cache_type == "redis":
         if args.cache_ssl == "yes":
@@ -180,6 +184,7 @@ def connect(args, mode: str) -> TradesCache:
                     ssl=True,
                 ),
                 mode,
+                **kwargs
             )
         else:
             return TradesCacheRedis(
@@ -187,6 +192,7 @@ def connect(args, mode: str) -> TradesCache:
                     host=args.cache_name, port=args.cache_port, password=args.cache_key
                 ),
                 mode,
+                **kwargs
             )
     elif args.cache_type == "filesystem":
         return TradesCacheFile(args.cache_path, mode)
