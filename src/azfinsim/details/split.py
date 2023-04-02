@@ -1,5 +1,5 @@
 import logging
-import os.path
+import os, os.path
 import time
 
 from . import metrics
@@ -46,15 +46,18 @@ def execute(args):
     end_trade = start_trade + dbase.get_trade_count()
     log.info("{:10}: all trades {}-{}".format("TRADES", start_trade, end_trade - 1))
 
-    dir, file = os.path.split(args.cache_path)
-    name, ext = os.path.splitext(file)
+    _, filename = os.path.split(args.cache_path)
+    name, ext = os.path.splitext(filename)
+
+    # make output dir
+    os.makedirs(args.output_path, exist_ok=True)
 
     trades = dbase.get_trades()
-
     start_ts = time.perf_counter()
+
     # -- split trades into batches
     for index, offset in enumerate(range(0, len(trades), args.trade_window)):
-        args.cache_path = os.path.join(dir, "{}.{}{}".format(name, index, ext))
+        args.cache_path = os.path.join(args.output_path, "{}.{}{}".format(name, index, ext))
         log.info("{:10}: creating {}".format("OUT_CACHE", args.cache_path))
         output = connect(args, mode="w")
 
