@@ -5,7 +5,6 @@ import sys
 
 from . import metrics
 
-
 # helper setup azure log handler
 def _az_log_handler(connection_string: str):
     # register log handler
@@ -69,6 +68,11 @@ def process_args(progname, args):
         tags.update(args.tags)
     metrics.initialize_tags(tags)
 
+    logger = logging.getLogger(__name__)
+    for key in dir(args):
+        if key.startswith("_"):
+            continue
+        logger.info(f"args.{key} = {getattr(args, key)}")
 
 # initialize logging
 _initialize_logging()

@@ -96,7 +96,7 @@ def getargs(progname):
         )
     if progname == "concat":
         fsParser.add_argument(
-            "--output-path", help="merged file name.", required=True, type=str
+            "--output-path", help="merged file name.", type=str
         )
 
     # -- algorithm/work per thread
