@@ -51,9 +51,13 @@ def getargs(progname):
     )
     parser.add_argument(
         "--verbose",
-        default=False,
-        type=lambda x: (str(x).lower() == "true"),
-        help="verbose output: true or false (default: false)",
+        action="store_true",
+        help="generate verbose output",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="do not colorize output",
     )
 
     # -- Cache parameters
@@ -174,10 +178,9 @@ def getargs(progname):
     )
 
     import sys
-    log.info(f"parsing arguments: {sys.argv}")
+    log.debug(f"parsing arguments: {sys.argv}")
     args = parser.parse_args()
 
     from . import process_args
-
     process_args(progname, args)
     return args

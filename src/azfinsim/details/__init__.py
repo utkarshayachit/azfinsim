@@ -23,15 +23,23 @@ def _az_log_handler(connection_string: str):
 
 
 def _initialize_logging():
+    import sys
+    no_color = "--no-color" in sys.argv
+    verbose = "--verbose" in sys.argv
+
     # setup logging for this package
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO if not verbose else logging.DEBUG)
 
     # setup console logger to output to terminal by default
     ch = logging.StreamHandler()
-    formatter = colorlog.ColoredFormatter(
-        "%(purple)s%(asctime)s - %(name)s - %(levelname)s - %(log_color)s%(message)s"
-    )
+    if no_color:
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    else:
+        formatter = colorlog.ColoredFormatter(
+            "%(purple)s%(asctime)s - %(name)s - %(levelname)s - %(log_color)s%(message)s"
+        )
+
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
@@ -72,7 +80,7 @@ def process_args(progname, args):
     for key in dir(args):
         if key.startswith("_"):
             continue
-        logger.info(f"args.{key} = {getattr(args, key)}")
+        logger.debug(f"args.{key} = {getattr(args, key)}")
 
 # initialize logging
 _initialize_logging()
