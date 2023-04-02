@@ -5,7 +5,9 @@ from an optionally specified config file.
 """
 import argparse
 import json
+import logging
 
+log = logging.getLogger(__name__)
 
 class ArgumentsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string):
@@ -171,6 +173,8 @@ def getargs(progname):
         default={},
     )
 
+    import sys
+    log.info(f"parsing arguments: {sys.argv}")
     args = parser.parse_args()
 
     from . import process_args
