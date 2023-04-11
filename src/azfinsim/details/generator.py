@@ -4,6 +4,7 @@
 #
 import logging
 import time
+import os, os.path
 
 from .utils import GenerateTrade
 from .dbase import connect
@@ -81,6 +82,11 @@ def execute(args):
             args.cache_path if args.cache_type == "filesystem" else args.cache_name,
         )
     )
+
+    if args.cache_type == "filesystem":
+        # make output dir, if needed
+        os.makedirs(os.path.dirname(args.cache_path), exist_ok=True)
+
     dbase = connect(args, mode="w")
     log.info("{:10}: connected".format("CACHE"))
 
