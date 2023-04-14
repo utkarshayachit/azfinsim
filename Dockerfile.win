@@ -1,0 +1,13 @@
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+RUN curl -L https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe -o python-3.10.11-amd64.exe
+RUN python-3.10.11-amd64.exe /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 TargetDir=C:\Python310
+
+WORKDIR /azfinsim
+COPY src/azfinsim src/azfinsim/
+COPY *.toml ./
+COPY LICENSE ./
+RUN C:/Python310/python.exe -m pip install -e .
+
+ENTRYPOINT [ "C:/Python310/python.exe" ]
+CMD ["-m", "azfinsim.azfinsim", "--help"]
